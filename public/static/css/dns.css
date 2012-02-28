@@ -1,0 +1,5 @@
+.high-query-rate { font-weight: bold }
+.slow-response { color: red }
+
+#status_dump { display: none }
+

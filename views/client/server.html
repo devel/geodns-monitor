@@ -1,0 +1,17 @@
+<tr>
+{{#server}}
+<td><span rel="tooltip" title="{{#names}}{{name}} {{/names}}">{{name}}</span></td>
+
+<td><span class="ip">{{ip}}</a></td>
+
+<td class="{{qps_class}}">
+    {{#qps}}{{qps}}/qps{{/qps}}    
+</td>
+<td class="{{response_time_class}}">{{#response_time}}{{response_time}} ms{{/response_time}}</td>
+<td>{{version}}</td>
+<td>{{uptime_p}}</td>
+<td>{{last_update}}</td>
+<td>{{status}}</td>
+
+{{/server}}
+</tr>
