@@ -1,15 +1,15 @@
 "use strict";
 
 (function ($) {
-    
+
     var current_popover;
-    
+
     var update = function() {
         $.getJSON('/api/status', function(status) {
             //console.log("c", status);
-            var servers = status.servers; 
+            var servers = status.servers;
             // _.filter(status.servers, function(s) { return s.status.match("1.40") })
-            
+
             $('#servers span[rel=tooltip]').tooltip('hide');
             $('#servers tbody').html("");
             _.each( _.sortBy(servers, function(s) { return s.name }), function(s) {
@@ -40,7 +40,7 @@
         $(this).popover({ trigger: "manual", "title": "foo" });
         $(this).popover("show");
         current_popover = $(this);
-        
+
     });
 
     /*
@@ -63,5 +63,5 @@
 
 
     update();
-    window.setInterval(update, 3000);
+    window.setInterval(update, 1100);
 })(jQuery);
