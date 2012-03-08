@@ -22,11 +22,20 @@ TODO:
 var express = require('express'),
     app = module.exports = express.createServer(),
     dnsmonitor = require('./lib/dns-monitor')(),
+    fs = require('fs'),
+    hogan = require('hulk-hogan'),
     panic = require('panic');
+
+
+var Monitor = {};
+Monitor.PACKAGE = (function() {
+    var json = fs.readFileSync(__dirname + '/package.json', 'utf8');
+    return JSON.parse(json);
+}());
 
 app.configure(function() {
 	app.set('views', __dirname + '/views');
-	app.register('.html', require('express-hogan.js'));
+	app.register('.html', hogan);
 	app.use(express.bodyParser());
 	app.use(app.router);
 });
@@ -35,6 +44,7 @@ app.use(express['static'](__dirname + "/public"));
 //app.use(require('connect-assets'));
 
 app.get('/', function(req, res){
+    res.local('version', Monitor.PACKAGE.version);
     res.render('index.html');
 });
 

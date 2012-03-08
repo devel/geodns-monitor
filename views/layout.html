@@ -31,6 +31,7 @@
   </head>
 
   <body>
+    <div class="wrapper">
 
     <div class="navbar navbar-fixed-top">
       <div class="navbar-inner">
@@ -52,12 +53,20 @@
       </div>
     </div>
 
-    <div class="container">
-
-    {{{body}}}
-
+    <div id="main" class="container">
+        {{{body}}}
     </div> <!-- /container -->
 
+    </div> <!-- wrapper -->
+
+    {{#version}}
+	<div class="push"><!--//--></div>
+    <footer>
+        <p>
+            <small>v{{version}}</small>
+        </p>
+    </footer>
+    {{/version}}
 
     <!-- Le javascript
     ================================================== -->
