@@ -5,6 +5,8 @@
 
 html, body { height: 100%; }
 
+table { table-layout: fixed; }
+
 footer {
 	padding: 0 10px 0 10px;
 	border-top: 1px solid #ccc;

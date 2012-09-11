@@ -4,6 +4,7 @@
 /*
 TODO:
 
+* If the uptime drops, clear the previous query count
 * Periodically poll for a new server lists. How do we purge old servers? Have
   to keep track of where the servers came from, or syncronize the config update.
 * Check SOA timestamps
@@ -58,6 +59,7 @@ app.get('/api/status', function(req,res) {
 dnsmonitor.add_servers_by_ns("pool.ntp.org");
 dnsmonitor.add_servers_by_txt("test.ntpns.org");
 dnsmonitor.add_servers_by_txt("all-dns.ntppool.net");
+dnsmonitor.add_servers_by_ns("cpansearch.perl.org");
 
 
 var port = 1090;
