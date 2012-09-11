@@ -57,10 +57,9 @@ app.get('/api/status', function(req,res) {
 });
 
 dnsmonitor.add_servers_by_ns("pool.ntp.org");
-dnsmonitor.add_servers_by_txt("test.ntpns.org");
 dnsmonitor.add_servers_by_txt("all-dns.ntppool.net");
+dnsmonitor.add_servers_by_ns("android.ntppool.org");
 dnsmonitor.add_servers_by_ns("cpansearch.perl.org");
-
 
 var port = 1090;
 console.log("listening to port", port);
