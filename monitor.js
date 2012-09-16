@@ -21,11 +21,11 @@ TODO:
 */
 
 var express = require('express'),
-    app = module.exports = express.createServer(),
+    app     = module.exports = express.createServer(),
     dnsmonitor = require('./lib/dns-monitor')(),
-    fs = require('fs'),
-    hogan = require('hulk-hogan'),
-    panic = require('panic');
+    fs      = require('fs'),
+    hogan   = require('hulk-hogan'),
+    panic   = require('panic');
 
 
 var Monitor = {};
@@ -52,7 +52,7 @@ app.get('/', function(req, res){
 app.get('/api/status', function(req,res) {
     var config = dnsmonitor.status();
     res.header('Cache-Control', 'max-age=1');
-    //console.log("config is", config);
+    // console.log("config is", config);
     return res.json(config);
 });
 
