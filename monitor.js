@@ -21,12 +21,12 @@ TODO:
 */
 
 var express = require('express'),
-    app     = module.exports = express.createServer(),
+    cons    = require('consolidate'),
+    app     = express(),
     dnsmonitor = require('./lib/dns-monitor')(),
     fs      = require('fs'),
     hogan   = require('hulk-hogan'),
     panic   = require('panic');
-
 
 var Monitor = {};
 Monitor.PACKAGE = (function() {
@@ -35,17 +35,17 @@ Monitor.PACKAGE = (function() {
 }());
 
 app.configure(function() {
-	app.set('views', __dirname + '/views');
-	app.register('.html', hogan);
-	app.use(express.bodyParser());
-	app.use(app.router);
+    app.set('views', __dirname + '/views');
+    app.engine('html', cons.hogan);
+    app.use(express.bodyParser());
+    app.use(app.router);
 });
 
 app.use(express['static'](__dirname + "/public"));
 //app.use(require('connect-assets'));
 
 app.get('/', function(req, res){
-    res.local('version', Monitor.PACKAGE.version);
+    res.locals.version = Monitor.PACKAGE.version;
     res.render('index.html');
 });
 
