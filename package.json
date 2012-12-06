@@ -9,6 +9,7 @@
     ,"ws": ">= 0.4.21"
     ,"timeago": "*"
     ,"consolidate": "*"
+    ,"hogan.js": ">= 2.0"
     ,"panic": ">= 0.0.1"
   },
   "engines": {
