@@ -60,6 +60,8 @@ dnsmonitor.add_servers_by_ns("pool.ntp.org");
 dnsmonitor.add_servers_by_txt("all-dns.ntppool.net");
 dnsmonitor.add_servers_by_ns("android.ntppool.org");
 dnsmonitor.add_servers_by_ns("cpansearch.perl.org");
+dnsmonitor.add_server_by_name('zrh4.ntppool.net');
+dnsmonitor.add_server_by_name('lax4a.ntppool.net');
 
 var port = 1090;
 console.log("listening to port", port);
