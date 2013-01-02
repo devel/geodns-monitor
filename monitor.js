@@ -27,7 +27,6 @@ var express = require('express'),
     fs      = require('fs'),
     hogan   = require('hulk-hogan'),
     panic   = require('panic');
-
 var Monitor = {};
 Monitor.PACKAGE = (function() {
     var json = fs.readFileSync(__dirname + '/package.json', 'utf8');
@@ -54,6 +53,22 @@ app.get('/api/status', function(req,res) {
     res.header('Cache-Control', 'max-age=1');
     // console.log("config is", config);
     return res.json(config);
+});
+
+app.get('/api/status_events', function(req,res) {
+    res.header('Content-Type', 'text/event-stream');
+    res.header('Cache-Control', 'no-cache');
+    res.header('Connection', 'keep-alive');
+
+    dnsmonitor.events.on('status', function(status) {
+        res.write('event: status\n');
+        res.write('data: ' + JSON.stringify(status) + '\n\n');
+    });
+
+    res.on('close', function() {
+        // fs.unwatchFile(logfile);
+        // fs.close(fd);
+    });
 });
 
 dnsmonitor.add_servers_by_ns("pool.ntp.org");
