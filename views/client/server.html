@@ -2,7 +2,9 @@
 {{#server}}
 <td><span style="background-color:rgb({{color}})">&nbsp;</span> <span rel="tooltip" title="{{#names}}{{name}} {{/names}}">{{name}}</span></td>
 
-<td><span class="ip">{{ip}}</a></td>
+<td><span class="ip">
+<a href="http://{{ip}}:8053/status">{{ip}}</a>
+</td>
 
 <td class="{{qps_class}}">
     {{#qps}}{{qps}}/qps{{/qps}}
