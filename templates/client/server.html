@@ -1,0 +1,24 @@
+<tr>
+{{#server}}
+<td><span style="background-color:rgb({{color}})">&nbsp;</span> <span rel="tooltip" title="{{#names}}{{name}} {{/names}}">{{name}}</span></td>
+
+<td><span class="ip">
+<a href="http://{{ip}}:8053/status">{{ip}}</a>
+</td>
+
+<td class="{{qps_class}}">
+    {{#qps}}{{qps}}/qps{{/qps}}
+</td>
+
+<td>
+	{{#qps1m}}{{qps1m}}/qps{{/qps1m}}
+</td>
+
+<td>{{version}}</td>
+<td><small>{{#groups}}{{.}} {{/groups}}</small></td>
+<td>{{uptime_p}}</td>
+<td>{{last_update}}</td>
+<td>{{status}}</td>
+
+{{/server}}
+</tr>

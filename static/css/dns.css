@@ -1,0 +1,30 @@
+.high-query-rate { font-weight: bold }
+.slow-response { color: red }
+
+/*#status_dump { display: none }*/
+
+html, body { height: 100%; }
+
+table { table-layout: fixed; }
+
+footer {
+	padding: 0 10px 0 10px;
+	border-top: 1px solid #ccc;
+	color: white;
+	background-color: #eee;
+}
+
+footer > p {
+	margin-bottom: 11px;
+	margin-top: 13px;
+}
+
+/*.wrapper {
+	min-height: 100%;
+	height: auto !important;
+	height: 100%;
+	margin: 0 auto -43px;
+}*/
+
+/*Just some arbitrary space to add between footer and rest of the content, when they are close */
+/*.push { height: 63px; }  */
