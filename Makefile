@@ -1,5 +1,11 @@
 all: templates dnsmonitor
 
+debug:
+	go build -ldflags "-s"  -gcflags "-N -l"
+
+gdb: debug
+	gdb ./dnsmonitor -d $GOROOT
+
 dnsmonitor: *.go
 	go build
 
