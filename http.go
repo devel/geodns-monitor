@@ -34,10 +34,28 @@ func StatusHandler(hub *StatusHub) func(*rest.ResponseWriter, *rest.Request) {
 		byIp := make(map[string]*apiStatus)
 
 		for _, st := range currentStatus {
+
+			var lastUpdatedAgoStr, uptimeStr string
+
+			lastUpdatedAgo := DayDuration{time.Since(st.LastStatusUpdate)}
+			uptime := DayDuration{time.Since(time.Unix(time.Now().Unix()-st.Uptime, 0))}
+
+			if uptime.Seconds() <= lastUpdatedAgo.Seconds() {
+				uptimeStr = ""
+			} else {
+				uptimeStr = uptime.DayString()
+			}
+
+			if lastUpdatedAgo.Seconds() > 1 {
+				lastUpdatedAgoStr = lastUpdatedAgo.DayString()
+			} else {
+				lastUpdatedAgoStr = "now"
+			}
+
 			rv := &apiStatus{
 				*st,
-				time.Since(st.LastStatusUpdate).String(),
-				time.Since(time.Unix(time.Now().Unix()-st.Uptime, 0)).String(),
+				lastUpdatedAgoStr,
+				uptimeStr,
 			}
 
 			byIp[st.Ip] = rv
