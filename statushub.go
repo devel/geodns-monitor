@@ -20,6 +20,8 @@ type Status struct {
 	Status           string    `json:"status"`
 	LastStatusUpdate time.Time `json:"-"`
 
+	Connection *ServerConnection
+
 	Data ServerUpdate
 }
 
@@ -28,25 +30,38 @@ type statusMap map[int]*Status
 type StatusHub struct {
 	statusUpdates chan *ServerUpdate
 	statusMsgChan chan *ServerStatusMsg
+	addServerChan chan net.IP
 	nextServerId  chan int
-	Servers       []ServerConnection
 	serverStatus  statusMap
 	statuses      chan statusMap
 	remove        chan string
 	quit          chan bool
+
+	configRevision int
+	configManager  chan bool
 }
 
 func NewHub() *StatusHub {
 	hub := new(StatusHub)
 	hub.statusUpdates = make(chan *ServerUpdate, 10)
 	hub.statusMsgChan = make(chan *ServerStatusMsg, 10)
+	hub.addServerChan = make(chan net.IP)
 	hub.statuses = make(chan statusMap)
-	hub.quit = make(chan bool)
+	hub.quit = make(chan bool, 1)
 	hub.serverStatus = make(statusMap)
 	hub.nextServerId = make(chan int)
+	hub.configManager = make(chan bool)
 	go hub.makeServerId()
 	go hub.arbiter()
 	return hub
+}
+
+func (s *StatusHub) MarkConfigurationStart() {
+	s.configManager <- false
+}
+
+func (s *StatusHub) MarkConfigurationEnd() {
+	s.configManager <- true
 }
 
 func (s *StatusHub) makeServerId() int {
@@ -74,12 +89,55 @@ func (s *StatusHub) arbiter() {
 
 		case s.statuses <- s.serverStatus:
 
+		case cm := <-s.configManager:
+			switch cm {
+			case false:
+				s.configRevision++
+			case true:
+				for connId, srv := range s.serverStatus {
+					if srv.Connection.configRevision < s.configRevision {
+						log.Printf("Server %s has an old config revision, disconnecting %d", srv.Ip, connId)
+						srv.Connection.Stop()
+						// delete(s.serverStatus, connId)
+					}
+				}
+			}
+
+		case ip := <-s.addServerChan:
+
+			log.Println("Adding monitoring of", ip)
+
+			for _, server := range s.serverStatus {
+				if server.Ip == ip.String() {
+					log.Printf("Already monitoring '%s'\n", ip.String())
+					continue
+				}
+			}
+
+			log.Printf("Creating new connection for %s", ip)
+
+			sc := NewServerConnection(ip, s.statusUpdates, s.statusMsgChan)
+			sc.configRevision = s.configRevision
+
+			log.Printf("Start() on %s", sc.Ip)
+
+			connId := <-s.nextServerId
+
+			log.Println("got server id", connId)
+
+			status := new(Status)
+			status.Ip = ip.String()
+			status.Connection = sc
+			s.serverStatus[connId] = status
+
+			sc.Start(connId)
+
 		case <-s.quit:
 			log.Printf("StatusHub got quit!\n")
-			for _, sc := range s.Servers {
-				log.Printf("Sending quit to %s\n", sc.Ip)
-				delete(s.serverStatus, sc.connId)
-				sc.quit <- true
+			for connId, srv := range s.serverStatus {
+				log.Printf("Sending quit to %d (%s)\n", connId, srv.Ip)
+				srv.Connection.Stop()
+				delete(s.serverStatus, connId)
 			}
 			// TODO: do we need to close the channels?
 			log.Println("Arbiter done")
@@ -136,29 +194,13 @@ func (s *StatusHub) Status() []*Status {
 }
 
 func (s *StatusHub) Stop() {
+	log.Println("Sending quit to hub")
 	s.quit <- true
+	log.Println("sent quit to hub")
 }
 
 func (s *StatusHub) addIp(ip net.IP) error {
-
-	log.Printf("Creating new connection for %s", ip)
-
-	sc := NewServerConnection(ip, s.statusUpdates, s.statusMsgChan)
-
-	log.Printf("Start() on %s", sc.Ip)
-
-	connId := <-s.nextServerId
-
-	log.Println("got server id", connId)
-
-	status := new(Status)
-	status.Ip = ip.String()
-	s.serverStatus[connId] = status
-
-	sc.Start(connId)
-
-	log.Println("Add() returning")
-
+	s.addServerChan <- ip
 	return nil
 }
 
@@ -167,12 +209,21 @@ func (s *StatusHub) AddName(ipstr string) error {
 	if ip == nil {
 		// return fmt.Errorf("Could not parse IP: '%s'", ipstr)
 		addrs, err := net.LookupIP(ipstr)
-		if err != nil {
+		log.Printf("IP: %s, %#v %d\n", ipstr, addrs, len(addrs))
+		if err != nil || len(addrs) == 0 {
 			return fmt.Errorf("Could not lookup name: '%s': %s", ipstr, err)
 		}
+
+		if false {
+			return fmt.Errorf("Could not find IPs for: '%s'\n", ipstr)
+		}
+
 		for _, addr := range addrs {
 			log.Println("Adding", addr)
-			s.addIp(addr)
+			err = s.addIp(addr)
+			if err != nil {
+				log.Printf("Could not add '%s': %s\n", addr, err)
+			}
 		}
 		return nil
 	} else {

@@ -22,7 +22,10 @@ type ServerConnection struct {
 	Ip            net.IP
 	updateChan    chan *ServerUpdate
 	statusMsgChan chan *ServerStatusMsg
-	quit          chan bool
+
+	quit           chan bool
+	sleep          chan int
+	configRevision int
 }
 
 type ServerUpdate struct {
@@ -44,24 +47,26 @@ func NewServerConnection(ip net.IP, updates chan *ServerUpdate, sm chan *ServerS
 	sc.Ip = ip
 	sc.updateChan = updates
 	sc.statusMsgChan = sm
-	sc.quit = make(chan bool)
+	sc.quit = make(chan bool, 1)
+	sc.sleep = make(chan int, 1)
 	return sc
 }
 
 func (sc *ServerConnection) Start(id int) {
 	sc.connId = id
-	q := sc.quit
-	c := sc.updateChan
-	sm := sc.statusMsgChan
 	sc.statusMsg("Starting")
 
 	su := new(ServerUpdate)
 	su.connId = id
 	su.Ip = sc.Ip.String()
 
-	c <- su
+	sc.updateChan <- su
 
-	go sc.start(c, sm, q)
+	go sc.start()
+}
+
+func (sc *ServerConnection) Stop() {
+	sc.quit <- true
 }
 
 func (sc *ServerConnection) statusErrorMsg(str string) {
@@ -77,47 +82,81 @@ func (sc *ServerConnection) statusMsg(str string) {
 	sc.statusMsgChan <- msg
 }
 
-func (sc *ServerConnection) start(c chan *ServerUpdate, msg chan *ServerStatusMsg, q chan bool) {
+func (sc *ServerConnection) start() {
 	log.Println("Fetch for", sc.Ip)
 
 	retries := 0
 
 	for {
 
-		conn, err := net.Dial("tcp", net.JoinHostPort(sc.Ip.String(), "8053"))
-		if err != nil {
-			status := fmt.Sprintf("Could not connect to '%s': %s", sc.Ip, err)
-			sc.statusErrorMsg(status)
-			log.Println(status)
+		select {
+
+		case <-sc.quit:
+			log.Println("sc got quit!")
+			sc.statusErrorMsg("stopped")
+			return
+
+		case retries := <-sc.sleep:
+			delay := retries * retries / 2
+			if delay > 60 {
+				delay = 30
+			}
+			time.Sleep(time.Duration(delay) * time.Second)
+
+		default:
+
 			retries++
-			time.Sleep(time.Second * 8)
+
+			conn, err := net.Dial("tcp", net.JoinHostPort(sc.Ip.String(), "8053"))
+			if err != nil {
+				status := fmt.Sprintf("Could not connect to '%s': %s", sc.Ip, err)
+				sc.statusErrorMsg(status)
+				log.Println(status)
+				sc.sleep <- retries
+				continue
+			}
+			url, err := url.Parse("/monitor")
+			if err != nil {
+				log.Println("Could not parse url", err)
+			}
+			header := http.Header{}
+			header.Add("Origin", "http://monitor.pgeodns")
+			header.Add("Host", sc.Ip.String())
+			header.Add("Set-WebSocket-Protocol", "chat")
+
+			ws, _, err := websocket.NewClient(conn, url, header, 1024, 1024)
+			if err != nil {
+				status := fmt.Sprintf("Could not upgrade WS on '%s': %s", sc.Ip, err)
+				sc.statusErrorMsg(status)
+				log.Println(status)
+				sc.sleep <- retries
+				continue
+			}
+			sc.read(ws)
+			log.Println("server reader stopped")
+			sc.sleep <- retries
 			continue
 		}
-		url, err := url.Parse("/monitor")
-		if err != nil {
-			log.Println("Could not parse url", err)
-		}
-		header := http.Header{}
-		header.Add("Origin", "http://monitor.pgeodns")
-		header.Add("Host", sc.Ip.String())
-		header.Add("Set-WebSocket-Protocol", "chat")
+	}
+}
 
-		ws, resp, err := websocket.NewClient(conn, url, header, 1024, 1024)
-		if err != nil {
-			status := fmt.Sprintf("Could not upgrade WS on '%s': %s", sc.Ip, err)
-			sc.statusErrorMsg(status)
-			log.Println(status)
-			retries++
-			time.Sleep(time.Second * 1)
-			continue
-		}
-		retries = 0
-		log.Println("Response", resp)
+func (sc *ServerConnection) read(ws *websocket.Conn) {
 
-		status := new(ServerUpdate)
-		status.connId = sc.connId
+	// log.Println("Response", resp)
 
-		for {
+	status := new(ServerUpdate)
+	status.connId = sc.connId
+
+	for {
+
+		select {
+		case <-sc.quit:
+			log.Println("server reader got quit message")
+			sc.quit <- true
+			return
+
+		default:
+
 			ws.SetReadDeadline(time.Now().Add(time.Second * 3))
 			sc.statusMsg("Ok")
 			op, r, err := ws.NextReader()
@@ -137,7 +176,7 @@ func (sc *ServerConnection) start(c chan *ServerUpdate, msg chan *ServerStatusMs
 					log.Printf("Unmarshall err from '%s': '%s', data: '%s'\n", sc.Ip.String(), err, msg)
 				}
 				// log.Printf("Got status: %#v\n", status)
-				c <- status
+				sc.updateChan <- status
 			} else {
 				log.Println("op", op, "msg", string(msg), "err", err)
 			}

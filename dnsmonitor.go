@@ -4,8 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
-	"sync"
 )
 
 var VERSION string = "2.0.0"
@@ -38,13 +38,23 @@ func main() {
 
 	hub := NewHub()
 
+	go startHttp(2090, hub)
+
+	configure(hub)
+
+	quit := make(chan bool)
+	<-quit
+}
+
+func configure(hub *StatusHub) {
+
 	cfg, err := configRead(*configFile)
 	if err != nil {
 		log.Printf("Could not read config file '%s': %s\n", *configFile, err)
 		os.Exit(2)
 	}
 
-	go startHttp(2090, hub)
+	hub.MarkConfigurationStart()
 
 	for _, server := range cfg.Servers.A {
 		log.Println("Adding", server)
@@ -54,14 +64,21 @@ func main() {
 		}
 	}
 
-	// hub.Add("207.171.17.42")
-	// hub.Add("199.15.176.152")
-	// hub.Add("127.0.0.1")
+	for _, domain := range cfg.Servers.Domain {
+		log.Println("Adding NSes for", domain)
 
-	hub.AddName("bad-example.develooper.com")
+		nses, err := net.LookupNS(domain)
 
-	wg := new(sync.WaitGroup)
+		log.Printf("NSes: %#v: %s\n", nses, err)
+		for _, ns := range nses {
+			log.Printf("Adding '%s'\n", ns.Host)
+			err := hub.AddName(ns.Host)
+			if err != nil {
+				log.Printf("Could not add '%s': %s\n", ns.Host, err)
+			}
+		}
+	}
 
-	wg.Add(1)
-	wg.Wait()
+	hub.MarkConfigurationEnd()
+
 }
