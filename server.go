@@ -134,6 +134,10 @@ func (sc *ServerConnection) start() {
 			}
 			sc.read(ws)
 			log.Println("server reader stopped")
+			err = conn.Close()
+			if err != nil {
+				log.Printf("Error closing connection to %s: %s", sc.Ip, err)
+			}
 			sc.sleep <- retries
 			continue
 		}
@@ -164,7 +168,7 @@ func (sc *ServerConnection) read(ws *websocket.Conn) {
 				status := fmt.Sprintf("Error reading from server: %s", err)
 				sc.statusErrorMsg(status)
 				log.Println(status)
-				break
+				return
 			}
 			msg, err := ioutil.ReadAll(r)
 
