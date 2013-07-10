@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"os"
 )
 
@@ -44,41 +43,4 @@ func main() {
 
 	quit := make(chan bool)
 	<-quit
-}
-
-func configure(hub *StatusHub) {
-
-	cfg, err := configRead(*configFile)
-	if err != nil {
-		log.Printf("Could not read config file '%s': %s\n", *configFile, err)
-		os.Exit(2)
-	}
-
-	hub.MarkConfigurationStart()
-
-	for _, server := range cfg.Servers.A {
-		log.Println("Adding", server)
-		err := hub.AddName(server)
-		if err != nil {
-			log.Printf("Could not add '%s': %s\n", server, err)
-		}
-	}
-
-	for _, domain := range cfg.Servers.Domain {
-		log.Println("Adding NSes for", domain)
-
-		nses, err := net.LookupNS(domain)
-
-		log.Printf("NSes: %#v: %s\n", nses, err)
-		for _, ns := range nses {
-			log.Printf("Adding '%s'\n", ns.Host)
-			err := hub.AddName(ns.Host)
-			if err != nil {
-				log.Printf("Could not add '%s': %s\n", ns.Host, err)
-			}
-		}
-	}
-
-	hub.MarkConfigurationEnd()
-
 }
