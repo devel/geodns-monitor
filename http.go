@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/ant0ine/go-json-rest"
 	"github.com/gorilla/mux"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -11,7 +10,7 @@ import (
 )
 
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
-	templateFile, err := ioutil.ReadFile("templates/index.html")
+	templateFile, err := template("index.html")
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "Template error", http.StatusInternalServerError)
@@ -73,9 +72,8 @@ func startHttp(port int, hub *StatusHub) {
 	router.HandleFunc("/", HomeHandler)
 
 	http.Handle("/", router)
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-	router.Handle("/", http.FileServer(http.Dir(".")))
+	http.Handle("/static/", http.HandlerFunc(serveStatic))
 
 	restHandler := rest.ResourceHandler{}
 

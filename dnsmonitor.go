@@ -35,6 +35,8 @@ func main() {
 		os.Exit(0)
 	}
 
+	loadBundle()
+
 	hub := NewHub()
 
 	go startHttp(2090, hub)
