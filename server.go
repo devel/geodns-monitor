@@ -109,7 +109,7 @@ func (sc *ServerConnection) start() {
 
 			conn, err := net.Dial("tcp", net.JoinHostPort(sc.Ip.String(), "8053"))
 			if err != nil {
-				status := fmt.Sprintf("Could not connect to '%s': %s", sc.Ip, err)
+				status := fmt.Sprintf("%s", err)
 				sc.statusErrorMsg(status)
 				log.Println(status)
 				sc.sleep <- retries

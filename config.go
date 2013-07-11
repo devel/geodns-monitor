@@ -19,7 +19,6 @@ func configRead(fileName string) (*AppConfig, error) {
 
 	err := gcfg.ReadFileInto(cfg, fileName)
 	if err != nil {
-		log.Printf("Failed to parse config data: %s\n", err)
 		return nil, err
 	}
 	return cfg, nil
@@ -29,7 +28,7 @@ func configure(hub *StatusHub) {
 
 	cfg, err := configRead(*configFile)
 	if err != nil {
-		log.Printf("Could not read config file '%s': %s\n", *configFile, err)
+		log.Printf("Could not read config file: %s\n", err)
 		os.Exit(2)
 	}
 
