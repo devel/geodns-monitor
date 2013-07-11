@@ -5,12 +5,14 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 )
 
 type AppConfig struct {
 	Servers struct {
-		A  []string
-		Ns []string
+		A      []string
+		Domain []string
+		Txt    []string
 	}
 }
 
@@ -53,6 +55,35 @@ func configure(hub *StatusHub) {
 			err := hub.AddName(ns.Host)
 			if err != nil {
 				log.Printf("Could not add '%s': %s\n", ns.Host, err)
+			}
+		}
+	}
+
+	for _, txtconfig := range cfg.Servers.Txt {
+
+		x := strings.SplitN(txtconfig, ",", 2)
+		txtname := strings.TrimSpace(x[0])
+		txtbase := strings.TrimSpace(x[1])
+
+		log.Println("Adding TXT for", txtname, txtbase)
+
+		txts, err := net.LookupTXT(txtname)
+		log.Printf("TXTs: %#v: %s\n", txts, err)
+
+		names := []string{}
+
+		for _, txt := range txts {
+			for _, name := range strings.Split(txt, " ") {
+				names = append(names, name)
+			}
+		}
+
+		nameSlice := []string{"", txtbase}
+		for _, name := range names {
+			nameSlice[0] = name
+			err := hub.AddName(strings.Join(nameSlice, "."))
+			if err != nil {
+				log.Printf("Could not add '%s': %s\n", name, err)
 			}
 		}
 	}
