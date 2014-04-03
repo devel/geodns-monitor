@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/ant0ine/go-json-rest"
+	"github.com/ant0ine/go-json-rest/rest"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
@@ -19,8 +19,8 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(templateFile)
 }
 
-func StatusHandler(hub *StatusHub) func(*rest.ResponseWriter, *rest.Request) {
-	return func(w *rest.ResponseWriter, _ *rest.Request) {
+func StatusHandler(hub *StatusHub) func(rest.ResponseWriter, *rest.Request) {
+	return func(w rest.ResponseWriter, _ *rest.Request) {
 
 		currentStatus := hub.Status()
 
@@ -78,7 +78,12 @@ func startHttp(port int, hub *StatusHub) {
 	restHandler := rest.ResourceHandler{}
 
 	restHandler.SetRoutes(
-		rest.Route{"GET", "/api/status", StatusHandler(hub)},
+		&rest.Route{"GET", "/api/status", StatusHandler(hub)},
+		&rest.Route{"GET", "/.status",
+			func(w rest.ResponseWriter, r *rest.Request) {
+				w.WriteJson(restHandler.GetStatus())
+			},
+		},
 	)
 
 	restHandler.EnableGzip = true
