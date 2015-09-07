@@ -67,27 +67,34 @@ func statusHandler(hub *StatusHub) func(rest.ResponseWriter, *rest.Request) {
 	}
 }
 
-func startHTTP(port int, hub *StatusHub) {
+func setupMux(hub *StatusHub) http.Handler {
 	api := rest.NewApi()
 	api.Use(rest.DefaultDevStack...)
 	apirouter, err := rest.MakeRouter(
-		rest.Get("/api/status", statusHandler(hub)),
+		rest.Get("/status", statusHandler(hub)),
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
 	api.SetApp(apirouter)
 
-	http.Handle("/api/", http.StripPrefix("/api", api.MakeHandler()))
 	router := mux.NewRouter()
 	router.HandleFunc("/", homeHandler)
+	router.PathPrefix("/api/").Handler(http.StripPrefix("/api", api.MakeHandler()))
+	router.PathPrefix("/static/").HandlerFunc(serveStatic)
 
-	http.Handle("/", router)
-	http.Handle("/static/", http.HandlerFunc(serveStatic))
+	smux := http.NewServeMux()
+	smux.Handle("/", router)
+
+	return smux
+}
+
+func startHTTP(port int, hub *StatusHub) {
+	h := setupMux(hub)
 
 	listen := ":" + strconv.Itoa(port)
 	log.Println("Going to listen on port", listen)
 
 	// handlers.CombinedLoggingHandler(os.Stdout,
-	http.ListenAndServe(listen, http.DefaultServeMux)
+	http.ListenAndServe(listen, h)
 }

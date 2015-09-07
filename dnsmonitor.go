@@ -1,5 +1,7 @@
 package main
 
+//go:generate esc -o static.go -ignore .DS_Store -prefix static templates static
+
 import (
 	"flag"
 	"fmt"
@@ -16,6 +18,7 @@ var (
 	configFile      = flag.String("config", "dnsmonitor.conf", "Configuration file")
 	showVersionFlag = flag.Bool("version", false, "Show dnsconfig version")
 	verbose         = flag.Bool("verbose", false, "verbose output")
+	devel           = flag.Bool("devel", false, "Use development assets")
 )
 
 func init() {
