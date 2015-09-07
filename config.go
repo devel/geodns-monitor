@@ -1,13 +1,15 @@
 package main
 
 import (
-	"code.google.com/p/gcfg"
 	"log"
 	"net"
 	"os"
 	"strings"
+
+	"code.google.com/p/gcfg"
 )
 
+// AppConfig is the 'master' application configuration
 type AppConfig struct {
 	Servers struct {
 		A      []string

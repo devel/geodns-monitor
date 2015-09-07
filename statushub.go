@@ -11,7 +11,7 @@ type Status struct {
 	Name             string    `json:"name"`
 	Names            []string  `json:"names"`
 	Groups           []string  `json:"groups"`
-	Ip               string    `json:"ip"`
+	IP               string    `json:"ip"`
 	Version          string    `json:"version"`
 	Queries          int64     `json:"queries"`
 	Qps              float64   `json:"qps"`
@@ -31,7 +31,7 @@ type StatusHub struct {
 	statusUpdates chan *ServerUpdate
 	statusMsgChan chan *ServerStatusMsg
 	addServerChan chan net.IP
-	nextServerId  chan int
+	nextServerID  chan int
 	serverStatus  statusMap
 	statuses      chan statusMap
 	remove        chan string
@@ -49,9 +49,9 @@ func NewHub() *StatusHub {
 	hub.statuses = make(chan statusMap)
 	hub.quit = make(chan bool, 1)
 	hub.serverStatus = make(statusMap)
-	hub.nextServerId = make(chan int)
+	hub.nextServerID = make(chan int)
 	hub.configManager = make(chan bool)
-	go hub.makeServerId()
+	go hub.makeServerID()
 	go hub.arbiter()
 	return hub
 }
@@ -64,11 +64,11 @@ func (s *StatusHub) MarkConfigurationEnd() {
 	s.configManager <- true
 }
 
-func (s *StatusHub) makeServerId() int {
+func (s *StatusHub) makeServerID() int {
 	i := 1
 	for {
 		log.Println("Ready to make server id", i)
-		s.nextServerId <- i
+		s.nextServerID <- i
 		i++
 	}
 }
@@ -78,14 +78,14 @@ func (s *StatusHub) arbiter() {
 	for {
 		select {
 		case new := <-s.statusUpdates:
-			// log.Println("Adding status for", new.Ip)
-			srv := s.serverStatus[new.connId]
+			// log.Println("Adding status for", new.IP)
+			srv := s.serverStatus[new.connID]
 			updateStatus(srv, new)
 			// TODO: push to seriesly
 
 		case msg := <-s.statusMsgChan:
-			// log.Printf("Got StatusMsg from '%s': %s\n", msg.connId, msg.Status)
-			s.serverStatus[msg.connId].Status = msg.Status
+			// log.Printf("Got StatusMsg from '%s': %s\n", msg.connID, msg.Status)
+			s.serverStatus[msg.connID].Status = msg.Status
 
 		case s.statuses <- s.serverStatus:
 
@@ -94,11 +94,11 @@ func (s *StatusHub) arbiter() {
 			case false:
 				s.configRevision++
 			case true:
-				for connId, srv := range s.serverStatus {
+				for connID, srv := range s.serverStatus {
 					if srv.Connection.configRevision < s.configRevision {
-						log.Printf("Server %s has an old config revision, disconnecting %d", srv.Ip, connId)
+						log.Printf("Server %s has an old config revision, disconnecting %d", srv.IP, connID)
 						srv.Connection.Stop()
-						// delete(s.serverStatus, connId)
+						// delete(s.serverStatus, connID)
 					}
 				}
 			}
@@ -108,7 +108,7 @@ func (s *StatusHub) arbiter() {
 			log.Println("Adding monitoring of", ip)
 
 			for _, server := range s.serverStatus {
-				if server.Ip == ip.String() {
+				if server.IP == ip.String() {
 					log.Printf("Already monitoring '%s'\n", ip.String())
 					continue
 				}
@@ -119,25 +119,25 @@ func (s *StatusHub) arbiter() {
 			sc := NewServerConnection(ip, s.statusUpdates, s.statusMsgChan)
 			sc.configRevision = s.configRevision
 
-			log.Printf("Start() on %s", sc.Ip)
+			log.Printf("Start() on %s", sc.IP)
 
-			connId := <-s.nextServerId
+			connID := <-s.nextServerID
 
-			log.Println("got server id", connId)
+			log.Println("got server id", connID)
 
 			status := new(Status)
-			status.Ip = ip.String()
+			status.IP = ip.String()
 			status.Connection = sc
-			s.serverStatus[connId] = status
+			s.serverStatus[connID] = status
 
-			sc.Start(connId)
+			sc.Start(connID)
 
 		case <-s.quit:
 			log.Printf("StatusHub got quit!\n")
-			for connId, srv := range s.serverStatus {
-				log.Printf("Sending quit to %d (%s)\n", connId, srv.Ip)
+			for connID, srv := range s.serverStatus {
+				log.Printf("Sending quit to %d (%s)\n", connID, srv.IP)
 				srv.Connection.Stop()
-				delete(s.serverStatus, connId)
+				delete(s.serverStatus, connID)
 			}
 			// TODO: do we need to close the channels?
 			log.Println("Arbiter done")
@@ -154,8 +154,8 @@ func updateStatus(srv *Status, new *ServerUpdate) {
 		srv.Version = new.Version
 	}
 
-	if len(new.Id) > 0 {
-		srv.Name = new.Id
+	if len(new.ID) > 0 {
+		srv.Name = new.ID
 	}
 
 	if new.Uptime > 0 {
@@ -199,34 +199,33 @@ func (s *StatusHub) Stop() {
 	log.Println("sent quit to hub")
 }
 
-func (s *StatusHub) addIp(ip net.IP) error {
+func (s *StatusHub) addIP(ip net.IP) error {
 	s.addServerChan <- ip
 	return nil
 }
 
 func (s *StatusHub) AddName(ipstr string) error {
 	ip := net.ParseIP(ipstr)
-	if ip == nil {
-		// return fmt.Errorf("Could not parse IP: '%s'", ipstr)
-		addrs, err := net.LookupIP(ipstr)
-		log.Printf("IP: %s, %#v %d\n", ipstr, addrs, len(addrs))
-		if err != nil || len(addrs) == 0 {
-			return fmt.Errorf("Could not lookup name: '%s': %s", ipstr, err)
-		}
-
-		if false {
-			return fmt.Errorf("Could not find IPs for: '%s'\n", ipstr)
-		}
-
-		for _, addr := range addrs {
-			log.Println("Adding", addr)
-			err = s.addIp(addr)
-			if err != nil {
-				log.Printf("Could not add '%s': %s\n", addr, err)
-			}
-		}
-		return nil
-	} else {
-		return s.addIp(ip)
+	if ip != nil {
+		return s.addIP(ip)
 	}
+	// return fmt.Errorf("Could not parse IP: '%s'", ipstr)
+	addrs, err := net.LookupIP(ipstr)
+	log.Printf("IP: %s, %#v %d\n", ipstr, addrs, len(addrs))
+	if err != nil || len(addrs) == 0 {
+		return fmt.Errorf("Could not lookup name: '%s': %s", ipstr, err)
+	}
+
+	if false {
+		return fmt.Errorf("Could not find IPs for: '%s'\n", ipstr)
+	}
+
+	for _, addr := range addrs {
+		log.Println("Adding", addr)
+		err = s.addIP(addr)
+		if err != nil {
+			log.Printf("Could not add '%s': %s\n", addr, err)
+		}
+	}
+	return nil
 }

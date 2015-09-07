@@ -9,20 +9,20 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-type HttpSuite struct {
+type HTTPSuite struct {
 	hub *StatusHub
 }
 
-var _ = Suite(&HttpSuite{})
+var _ = Suite(&HTTPSuite{})
 
-func (s *HttpSuite) SetUpSuite(c *C) {
+func (s *HTTPSuite) SetUpSuite(c *C) {
 	fmt.Println("Starting http server")
 	hub := NewHub()
-	go startHttp(6824, hub)
+	go startHTTP(6824, hub)
 	time.Sleep(20 * time.Millisecond)
 }
 
-func (s *HttpSuite) TestSetup(c *C) {
+func (s *HTTPSuite) TestSetup(c *C) {
 	res, err := http.Get("http://localhost:6824/")
 	c.Assert(err, IsNil)
 	page, _ := ioutil.ReadAll(res.Body)

@@ -14,13 +14,13 @@ import (
 )
 
 type ServerStatusMsg struct {
-	connId int
+	connID int
 	Status string
 }
 
 type ServerConnection struct {
-	connId        int
-	Ip            net.IP
+	connID        int
+	IP            net.IP
 	updateChan    chan *ServerUpdate
 	statusMsgChan chan *ServerStatusMsg
 
@@ -30,22 +30,23 @@ type ServerConnection struct {
 }
 
 type ServerUpdate struct {
-	connId   int
+	connID   int
 	Hostname string   `json:"h"`
-	Id       string   `json:"id"`
+	ID       string   `json:"id"`
 	Version  string   `json:"v"`
 	Groups   []string `json:"groups"`
-	Ip       string   `json:"ip"`
+	IP       string   `json:"ip"`
 	Uptime   int64    `json:"up"`
 	Queries  int64    `json:"qs"`
 	Qps      float64  `json:"qps"`
 	Qps1     float64  `json:"qps1m"`
 	Started  int      `json:"started"`
+	UUID     string   `json:"uuid"`
 }
 
 func NewServerConnection(ip net.IP, updates chan *ServerUpdate, sm chan *ServerStatusMsg) *ServerConnection {
 	sc := new(ServerConnection)
-	sc.Ip = ip
+	sc.IP = ip
 	sc.updateChan = updates
 	sc.statusMsgChan = sm
 	sc.quit = make(chan bool, 1)
@@ -54,12 +55,12 @@ func NewServerConnection(ip net.IP, updates chan *ServerUpdate, sm chan *ServerS
 }
 
 func (sc *ServerConnection) Start(id int) {
-	sc.connId = id
+	sc.connID = id
 	sc.statusMsg("Starting")
 
 	su := new(ServerUpdate)
-	su.connId = id
-	su.Ip = sc.Ip.String()
+	su.connID = id
+	su.IP = sc.IP.String()
 
 	sc.updateChan <- su
 
@@ -73,18 +74,18 @@ func (sc *ServerConnection) Stop() {
 func (sc *ServerConnection) statusErrorMsg(str string) {
 	sc.statusMsg(str)
 	su := new(ServerUpdate)
-	su.connId = sc.connId
-	su.Ip = sc.Ip.String()
+	su.connID = sc.connID
+	su.IP = sc.IP.String()
 	sc.updateChan <- su
 }
 
 func (sc *ServerConnection) statusMsg(str string) {
-	msg := &ServerStatusMsg{sc.connId, str}
+	msg := &ServerStatusMsg{sc.connID, str}
 	sc.statusMsgChan <- msg
 }
 
 func (sc *ServerConnection) start() {
-	log.Println("Fetch for", sc.Ip)
+	log.Println("Fetch for", sc.IP)
 
 	retries := 0
 
@@ -108,7 +109,7 @@ func (sc *ServerConnection) start() {
 
 			retries++
 
-			conn, err := net.Dial("tcp", net.JoinHostPort(sc.Ip.String(), "8053"))
+			conn, err := net.Dial("tcp", net.JoinHostPort(sc.IP.String(), "8053"))
 			if err != nil {
 				status := fmt.Sprintf("%s", err)
 				sc.statusErrorMsg(status)
@@ -122,12 +123,12 @@ func (sc *ServerConnection) start() {
 			}
 			header := http.Header{}
 			header.Add("Origin", "http://monitor.pgeodns")
-			header.Add("Host", sc.Ip.String())
+			header.Add("Host", sc.IP.String())
 			header.Add("Set-WebSocket-Protocol", "chat")
 
 			ws, _, err := websocket.NewClient(conn, url, header, 1024, 1024)
 			if err != nil {
-				status := fmt.Sprintf("Could not upgrade WS on '%s': %s", sc.Ip, err)
+				status := fmt.Sprintf("Could not upgrade WS on '%s': %s", sc.IP, err)
 				sc.statusErrorMsg(status)
 				log.Println(status)
 				sc.sleep <- retries
@@ -137,7 +138,7 @@ func (sc *ServerConnection) start() {
 			log.Println("server reader stopped")
 			err = conn.Close()
 			if err != nil {
-				log.Printf("Error closing connection to %s: %s", sc.Ip, err)
+				log.Printf("Error closing connection to %s: %s", sc.IP, err)
 			}
 			sc.sleep <- retries
 			continue
@@ -150,7 +151,7 @@ func (sc *ServerConnection) read(ws *websocket.Conn) {
 	// log.Println("Response", resp)
 
 	status := new(ServerUpdate)
-	status.connId = sc.connId
+	status.connID = sc.connID
 
 	for {
 
@@ -178,7 +179,7 @@ func (sc *ServerConnection) read(ws *websocket.Conn) {
 			if op == websocket.TextMessage {
 				err = json.Unmarshal(msg, &status)
 				if err != nil {
-					log.Printf("Unmarshall err from '%s': '%s', data: '%s'\n", sc.Ip.String(), err, msg)
+					log.Printf("Unmarshall err from '%s': '%s', data: '%s'\n", sc.IP.String(), err, msg)
 				}
 				// log.Printf("Got status: %#v\n", status)
 				sc.updateChan <- status

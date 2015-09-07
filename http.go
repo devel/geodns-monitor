@@ -10,7 +10,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func HomeHandler(w http.ResponseWriter, r *http.Request) {
+func homeHandler(w http.ResponseWriter, r *http.Request) {
 	templateFile, err := template("index.html")
 	if err != nil {
 		log.Println(err)
@@ -20,7 +20,7 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(templateFile)
 }
 
-func StatusHandler(hub *StatusHub) func(rest.ResponseWriter, *rest.Request) {
+func statusHandler(hub *StatusHub) func(rest.ResponseWriter, *rest.Request) {
 	return func(w rest.ResponseWriter, _ *rest.Request) {
 
 		currentStatus := hub.Status()
@@ -31,7 +31,7 @@ func StatusHandler(hub *StatusHub) func(rest.ResponseWriter, *rest.Request) {
 			Restarted      string `json:"uptime_p"`
 		}
 
-		byIp := make(map[string]*apiStatus)
+		byIP := make(map[string]*apiStatus)
 
 		for _, st := range currentStatus {
 
@@ -58,20 +58,20 @@ func StatusHandler(hub *StatusHub) func(rest.ResponseWriter, *rest.Request) {
 				uptimeStr,
 			}
 
-			byIp[st.Ip] = rv
+			byIP[st.IP] = rv
 		}
 
-		// remoteIp := req.RemoteAddr
+		// remoteIP := req.RemoteAddr
 
-		w.WriteJson(map[string]interface{}{"servers": byIp})
+		w.WriteJson(map[string]interface{}{"servers": byIP})
 	}
 }
 
-func startHttp(port int, hub *StatusHub) {
+func startHTTP(port int, hub *StatusHub) {
 	api := rest.NewApi()
 	api.Use(rest.DefaultDevStack...)
 	apirouter, err := rest.MakeRouter(
-		rest.Get("/api/status", StatusHandler(hub)),
+		rest.Get("/api/status", statusHandler(hub)),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -80,7 +80,7 @@ func startHttp(port int, hub *StatusHub) {
 
 	http.Handle("/api/", http.StripPrefix("/api", api.MakeHandler()))
 	router := mux.NewRouter()
-	router.HandleFunc("/", HomeHandler)
+	router.HandleFunc("/", homeHandler)
 
 	http.Handle("/", router)
 	http.Handle("/static/", http.HandlerFunc(serveStatic))

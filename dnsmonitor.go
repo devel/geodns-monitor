@@ -7,14 +7,15 @@ import (
 	"os"
 )
 
-var VERSION string = "2.1.0"
+// VERSION is the application version number
+var VERSION = "2.1.0"
 var buildTime string
 var gitVersion string
 
 var (
 	configFile      = flag.String("config", "dnsmonitor.conf", "Configuration file")
 	showVersionFlag = flag.Bool("version", false, "Show dnsconfig version")
-	Verbose         = flag.Bool("verbose", false, "verbose output")
+	verbose         = flag.Bool("verbose", false, "verbose output")
 )
 
 func init() {
@@ -39,7 +40,7 @@ func main() {
 
 	hub := NewHub()
 
-	go startHttp(2090, hub)
+	go startHTTP(2090, hub)
 
 	configure(hub)
 

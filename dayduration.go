@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+// DayDuration is similar to time.Duration except it is able to
+// pretty print an "uptime duration"
 type DayDuration struct {
 	time.Duration
 }
@@ -26,7 +28,7 @@ func fmtInt(buf []byte, v uint64) int {
 	return w
 }
 
-// Copied from time/time.go
+// DayString is copied from time/time.go
 func (d DayDuration) DayString() string {
 	var buf [32]byte
 	w := len(buf)
