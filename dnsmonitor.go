@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-var VERSION string = "2.0.0"
+var VERSION string = "2.1.0"
 var buildTime string
 var gitVersion string
 

@@ -1,8 +1,9 @@
 package main
 
 import (
-	. "launchpad.net/gocheck"
 	"time"
+
+	. "gopkg.in/check.v1"
 )
 
 type DurationSuite struct {

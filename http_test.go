@@ -3,9 +3,10 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
 	"net/http"
 	"time"
+
+	. "gopkg.in/check.v1"
 )
 
 type HttpSuite struct {

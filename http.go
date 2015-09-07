@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/ant0ine/go-json-rest"
-	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/ant0ine/go-json-rest/rest"
+	"github.com/gorilla/mux"
 )
 
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
@@ -19,8 +20,8 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(templateFile)
 }
 
-func StatusHandler(hub *StatusHub) func(*rest.ResponseWriter, *rest.Request) {
-	return func(w *rest.ResponseWriter, _ *rest.Request) {
+func StatusHandler(hub *StatusHub) func(rest.ResponseWriter, *rest.Request) {
+	return func(w rest.ResponseWriter, _ *rest.Request) {
 
 		currentStatus := hub.Status()
 
@@ -67,26 +68,22 @@ func StatusHandler(hub *StatusHub) func(*rest.ResponseWriter, *rest.Request) {
 }
 
 func startHttp(port int, hub *StatusHub) {
+	api := rest.NewApi()
+	api.Use(rest.DefaultDevStack...)
+	apirouter, err := rest.MakeRouter(
+		rest.Get("/api/status", StatusHandler(hub)),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	api.SetApp(apirouter)
 
+	http.Handle("/api/", http.StripPrefix("/api", api.MakeHandler()))
 	router := mux.NewRouter()
 	router.HandleFunc("/", HomeHandler)
 
 	http.Handle("/", router)
-
 	http.Handle("/static/", http.HandlerFunc(serveStatic))
-
-	restHandler := rest.ResourceHandler{}
-
-	restHandler.SetRoutes(
-		rest.Route{"GET", "/api/status", StatusHandler(hub)},
-	)
-
-	restHandler.EnableGzip = true
-	restHandler.EnableLogAsJson = true
-	restHandler.EnableResponseStackTrace = true
-	restHandler.EnableStatusService = true
-
-	http.Handle("/api/", &restHandler)
 
 	listen := ":" + strconv.Itoa(port)
 	log.Println("Going to listen on port", listen)

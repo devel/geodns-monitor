@@ -3,13 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/garyburd/go-websocket/websocket"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 type ServerStatusMsg struct {
@@ -174,7 +175,7 @@ func (sc *ServerConnection) read(ws *websocket.Conn) {
 
 			// log.Println("op", op, "msg", string(msg), "err", err)
 
-			if op == websocket.OpText {
+			if op == websocket.TextMessage {
 				err = json.Unmarshal(msg, &status)
 				if err != nil {
 					log.Printf("Unmarshall err from '%s': '%s', data: '%s'\n", sc.Ip.String(), err, msg)
