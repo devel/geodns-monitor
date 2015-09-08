@@ -12,6 +12,7 @@ type Status struct {
 	Names            []string  `json:"names"`
 	Groups           []string  `json:"groups"`
 	IP               string    `json:"ip"`
+	UUID             string    `json:"uuid"`
 	Version          string    `json:"version"`
 	Queries          int64     `json:"queries"`
 	Qps              float64   `json:"qps"`
@@ -79,13 +80,35 @@ func (s *StatusHub) arbiter() {
 		select {
 		case new := <-s.statusUpdates:
 			// log.Println("Adding status for", new.IP)
-			srv := s.serverStatus[new.connID]
-			updateStatus(srv, new)
+			srv, ok := s.serverStatus[new.ConnID]
+			if ok {
+				if len(new.UUID) > 0 {
+					if dupeID := s.FindUUID(new.UUID); dupeID > 0 && dupeID != new.ConnID {
+						log.Printf("Duplicate connection to %s (uuid %s); this is %d, dupe is %d", new.IP, new.UUID, new.ConnID, dupeID)
+
+						// try keeping the connection that's the one reported by the server
+						if srv.Connection.IP.String() != new.IP {
+							dupeID = new.ConnID
+						}
+						s.serverStatus[dupeID].Connection.Stop()
+						delete(s.serverStatus, dupeID)
+						continue
+					}
+				}
+
+				updateStatus(srv, new)
+			} else {
+				log.Printf("got status update for unknown connection %d (ip %s)", new.ConnID, new.IP)
+			}
+
 			// TODO: push to seriesly
 
 		case msg := <-s.statusMsgChan:
-			// log.Printf("Got StatusMsg from '%s': %s\n", msg.connID, msg.Status)
-			s.serverStatus[msg.connID].Status = msg.Status
+			// log.Printf("Got StatusMsg from '%d': %s\n", msg.ConnID, msg.Status)
+			srv, ok := s.serverStatus[msg.ConnID]
+			if ok {
+				srv.Status = msg.Status
+			}
 
 		case s.statuses <- s.serverStatus:
 
@@ -98,7 +121,7 @@ func (s *StatusHub) arbiter() {
 					if srv.Connection.configRevision < s.configRevision {
 						log.Printf("Server %s has an old config revision, disconnecting %d", srv.IP, connID)
 						srv.Connection.Stop()
-						// delete(s.serverStatus, connID)
+						delete(s.serverStatus, connID)
 					}
 				}
 			}
@@ -107,11 +130,17 @@ func (s *StatusHub) arbiter() {
 
 			log.Println("Adding monitoring of", ip)
 
+			foundDuplicate := false
 			for _, server := range s.serverStatus {
 				if server.IP == ip.String() {
+					foundDuplicate = true
 					log.Printf("Already monitoring '%s'\n", ip.String())
-					continue
+					server.Connection.configRevision = s.configRevision
+					break
 				}
+			}
+			if foundDuplicate {
+				continue
 			}
 
 			log.Printf("Creating new connection for %s", ip)
@@ -146,6 +175,15 @@ func (s *StatusHub) arbiter() {
 	}
 }
 
+func (s *StatusHub) FindUUID(UUID string) int {
+	for connID, server := range s.serverStatus {
+		if server.UUID == UUID {
+			return connID
+		}
+	}
+	return 0
+}
+
 func updateStatus(srv *Status, new *ServerUpdate) {
 	srv.Data = *new
 	srv.LastStatusUpdate = time.Now()
@@ -156,6 +194,10 @@ func updateStatus(srv *Status, new *ServerUpdate) {
 
 	if len(new.ID) > 0 {
 		srv.Name = new.ID
+	}
+
+	if len(new.UUID) > 0 {
+		srv.UUID = new.UUID
 	}
 
 	if new.Uptime > 0 {
@@ -183,25 +225,34 @@ func updateStatus(srv *Status, new *ServerUpdate) {
 
 func (s *StatusHub) Status() []*Status {
 	current := <-s.statuses
-	rv := make([]*Status, len(current))
-	i := 0
+	rv := make([]*Status, 0)
 	for _, status := range current {
 		// log.Printf("Status for '%name': %#v\n", name, status)
-		rv[i] = status
-		i++
+		if !status.LastStatusUpdate.IsZero() || len(status.Status) > 0 {
+			rv = append(rv, status)
+		}
 	}
 	return rv
 }
 
 func (s *StatusHub) Stop() {
-	log.Println("Sending quit to hub")
 	s.quit <- true
-	log.Println("sent quit to hub")
 }
 
 func (s *StatusHub) addIP(ip net.IP) error {
 	s.addServerChan <- ip
 	return nil
+}
+
+func (s *StatusHub) AddNameBackground(ipstr string, ch chan error) {
+	go func() {
+		err := s.AddName(ipstr)
+		if err == nil {
+			ch <- err
+		} else {
+			ch <- fmt.Errorf("error adding server '%s': %s", ipstr, err)
+		}
+	}()
 }
 
 func (s *StatusHub) AddName(ipstr string) error {

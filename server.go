@@ -14,12 +14,12 @@ import (
 )
 
 type ServerStatusMsg struct {
-	connID int
+	ConnID int
 	Status string
 }
 
 type ServerConnection struct {
-	connID        int
+	ConnID        int
 	IP            net.IP
 	updateChan    chan *ServerUpdate
 	statusMsgChan chan *ServerStatusMsg
@@ -30,7 +30,7 @@ type ServerConnection struct {
 }
 
 type ServerUpdate struct {
-	connID   int
+	ConnID   int      `json:"connection_id"`
 	Hostname string   `json:"h"`
 	ID       string   `json:"id"`
 	Version  string   `json:"v"`
@@ -55,11 +55,11 @@ func NewServerConnection(ip net.IP, updates chan *ServerUpdate, sm chan *ServerS
 }
 
 func (sc *ServerConnection) Start(id int) {
-	sc.connID = id
+	sc.ConnID = id
 	sc.statusMsg("Starting")
 
 	su := new(ServerUpdate)
-	su.connID = id
+	su.ConnID = id
 	su.IP = sc.IP.String()
 
 	sc.updateChan <- su
@@ -74,13 +74,13 @@ func (sc *ServerConnection) Stop() {
 func (sc *ServerConnection) statusErrorMsg(str string) {
 	sc.statusMsg(str)
 	su := new(ServerUpdate)
-	su.connID = sc.connID
+	su.ConnID = sc.ConnID
 	su.IP = sc.IP.String()
 	sc.updateChan <- su
 }
 
 func (sc *ServerConnection) statusMsg(str string) {
-	msg := &ServerStatusMsg{sc.connID, str}
+	msg := &ServerStatusMsg{sc.ConnID, str}
 	sc.statusMsgChan <- msg
 }
 
@@ -151,7 +151,7 @@ func (sc *ServerConnection) read(ws *websocket.Conn) {
 	// log.Println("Response", resp)
 
 	status := new(ServerUpdate)
-	status.connID = sc.connID
+	status.ConnID = sc.ConnID
 
 	for {
 

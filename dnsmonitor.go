@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 )
 
 // VERSION is the application version number
@@ -45,7 +46,13 @@ func main() {
 
 	go startHTTP(2090, hub)
 
-	configure(hub)
+	go func() {
+		for {
+			log.Println("running configuration...")
+			configure(hub)
+			time.Sleep(20 * time.Second)
+		}
+	}()
 
 	quit := make(chan bool)
 	<-quit

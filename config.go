@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 
 	"code.google.com/p/gcfg"
 )
@@ -37,13 +38,13 @@ func configure(hub *StatusHub) {
 	}
 
 	hub.MarkConfigurationStart()
+	wg := &sync.WaitGroup{}
+	errch := make(chan error, 20)
 
 	for _, server := range cfg.Servers.A {
 		log.Println("Adding", server)
-		err := hub.AddName(server)
-		if err != nil {
-			log.Printf("Could not add '%s': %s\n", server, err)
-		}
+		wg.Add(1)
+		hub.AddNameBackground(server, errch)
 	}
 
 	for _, domain := range cfg.Servers.Domain {
@@ -54,10 +55,8 @@ func configure(hub *StatusHub) {
 		log.Printf("NSes: %#v: %s\n", nses, err)
 		for _, ns := range nses {
 			log.Printf("Adding '%s'\n", ns.Host)
-			err := hub.AddName(ns.Host)
-			if err != nil {
-				log.Printf("Could not add '%s': %s\n", ns.Host, err)
-			}
+			wg.Add(1)
+			hub.AddNameBackground(ns.Host, errch)
 		}
 	}
 
@@ -83,13 +82,21 @@ func configure(hub *StatusHub) {
 		nameSlice := []string{"", txtbase}
 		for _, name := range names {
 			nameSlice[0] = name
-			err := hub.AddName(strings.Join(nameSlice, "."))
-			if err != nil {
-				log.Printf("Could not add '%s': %s\n", name, err)
-			}
+			hub.AddNameBackground(strings.Join(nameSlice, "."), errch)
 		}
 	}
 
+	go func() {
+		for err := range errch {
+			if err != nil {
+				log.Println(err)
+			}
+			wg.Done()
+		}
+	}()
+
+	wg.Wait()
+	close(errch)
 	hub.MarkConfigurationEnd()
 
 }

@@ -7,10 +7,13 @@ test: templates
 
 dir: $(DROPBOX)
 
-templates: data.go
+templates: static/js/templates.js static.go
 
-data.go: templates/* static/* templates/*/* static/*/*
-	sh bundle.sh
+static/js/templates.js: templates/client/*.html
+	hulk templates/client/*.html > static/js/templates.js
+
+static.go: templates/* static/* templates/*/* static/*/*
+	go generate
 
 $(DROPBOX):
 	mkdir -p $(DROPBOX)

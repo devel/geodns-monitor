@@ -14,7 +14,10 @@
 
             $('#servers span[rel=tooltip]').tooltip('hide');
             $('#servers tbody').html("");
-            _.each( _.sortBy(servers, function(s) { return s.name }), function(s) {
+            _.each( _.sortBy(servers, function(s) {
+                if (s.name === "") { return "zzzzzzz" }
+                return s.name
+            }), function(s) {
                 graph.record(s.name, s.qps);
                 s.names = _.map(s.names, function(n) { return { name: n } });
                 s.color = graph.getColor(s.name);
